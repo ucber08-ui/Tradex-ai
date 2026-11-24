@@ -1,0 +1,66 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  apk:
+    name: Build APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Create Capacitor project
+        run: |
+          npm init -y
+          npm install @capacitor/core @capacitor/cli @capacitor/android
+          mkdir www
+          cp index.html logo.png icon-192.png icon-512.png manifest.webmanifest www/
+          npx cap init "Tradex AI" com.tradex.ai --web-dir=www
+          npx cap add android
+          npx cap sync android
+
+      - name: Set app icon
+        run: |
+          pip install pillow
+          python3 - <<'PY'
+          from PIL import Image
+          src = Image.open("icon-512.png").convert("RGBA")
+          res = "android/app/src/main/res"
+          sizes = {"mdpi": 48, "hdpi": 72, "xhdpi": 96, "xxhdpi": 144, "xxxhdpi": 192}
+          for d, s in sizes.items():
+              for n in ("ic_launcher.png", "ic_launcher_round.png", "ic_launcher_foreground.png"):
+                  src.resize((s, s), Image.LANCZOS).save(f"{res}/mipmap-{d}/{n}")
+          PY
+          rm -rf android/app/src/main/res/mipmap-anydpi-v26
+
+      - name: Build debug APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: TradexAI-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
