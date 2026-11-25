@@ -38,16 +38,14 @@ jobs:
           npx cap add android
           npx cap sync android
 
-      - name: Insert API keys from secrets
+      - name: Insert TwelveData key from secret
         env:
-          GEMINI_KEY: ${{ secrets.GEMINI_KEY }}
           TWELVE_KEY: ${{ secrets.TWELVE_KEY }}
         run: |
           python3 - <<'PY'
           import os
           p = "www/index.html"
           s = open(p).read()
-          s = s.replace("__GEMINI_KEY__", os.environ.get("GEMINI_KEY", ""))
           s = s.replace("__TWELVE_KEY__", os.environ.get("TWELVE_KEY", ""))
           open(p, "w").write(s)
           PY
